@@ -17,9 +17,13 @@ __version__ = read_version()
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-with open(os.path.join(os.path.dirname(__file__), "requirements.txt"), "r", encoding="utf-8-sig") as f:
-    required_packages = f.read().splitlines()
+try:
+    with open(os.path.join(os.path.dirname(__file__), "requirements.txt"), "r", encoding="utf-8-sig") as f:
+        required_packages = f.read().splitlines()
+except FileNotFoundError:
+    required_packages = []
 
+# Setup function to package the project
 setup(
     name="LightYtSearch",
     version=__version__,
