@@ -2,9 +2,9 @@
 
 <div align="center">
 
-[![PyPI version](https://img.shields.io/pypi/v/lightytsearch.svg)](https://pypi.org/project/lightytsearch/)
+[![PyPI version](https://img.shields.io/pypi/v/LightYtSearch.svg)](https://pypi.org/project/LightYtSearch/)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Downloads](https://img.shields.io/pypi/dm/lightytsearch.svg)](https://pypi.org/project/lightytsearch/)
+[![Downloads](https://img.shields.io/pypi/dm/LightYtSearch.svg)](https://pypi.org/project/LightYtSearch/)
 [![Commits](https://img.shields.io/github/commit-activity/m/Arrowar/LightYtSearch)](https://github.com/Arrowar/LightYtSearch/commits/main)
 [![Last Commit](https://img.shields.io/github/last-commit/Arrowar/LightYtSearch)](https://github.com/Arrowar/LightYtSearch/commits/main)
 
@@ -45,7 +45,7 @@ A lightweight Python package to search YouTube without using the official API.
 Install from PyPI using pip:
 
 ```bash
-pip install lightytsearch
+pip install LightYtSearch
 ```
 
 Or install the development version from GitHub:
@@ -57,7 +57,7 @@ pip install git+https://github.com/Arrowar/LightYtSearch.git
 ## Quick Start
 
 ```python
-from lightytsearch import search_youtube
+from LightYtSearch import search_youtube
 
 # Basic search
 results = search_youtube("python tutorial", max_results=5)
@@ -75,7 +75,7 @@ for item in results:
 ### As a Python Module
 
 ```python
-from lightytsearch import search_youtube
+from LightYtSearch import search_youtube
 
 # Search for "python tutorial" and get up to 5 results
 results = search_youtube("python tutorial", max_results=5)
@@ -108,25 +108,25 @@ The `search_youtube()` function accepts the following parameters:
 
 ```bash
 # Basic search
-lightytsearch "python tutorial"
+LightYtSearch "python tutorial"
 
 # Get 10 results (maximum is 20)
-lightytsearch "python tutorial" -n 10
+LightYtSearch "python tutorial" -n 10
 
 # Export to JSON
-lightytsearch "python tutorial" -j > results.json
+LightYtSearch "python tutorial" -j > results.json
 
 # Save to a file
-lightytsearch "python tutorial" -s -o my_results.json
+LightYtSearch "python tutorial" -s -o my_results.json
 
 # Filter by type
-lightytsearch "python tutorial" --filter video
+LightYtSearch "python tutorial" --filter video
 
 # Set custom timeout, language, and region
-lightytsearch "python tutorial" --timeout 15 --language fr --region FR
+LightYtSearch "python tutorial" --timeout 15 --language fr --region FR
 
 # Configure retry behavior
-lightytsearch "python tutorial" --retry-count 5 --retry-delay 3
+LightYtSearch "python tutorial" --retry-count 5 --retry-delay 3
 ```
 
 ### CLI Arguments
@@ -230,7 +230,7 @@ The function returns a list of dictionaries with different structures depending 
 ### Searching for Videos Only
 
 ```python
-from lightytsearch import search_youtube
+from LightYtSearch import search_youtube
 
 # Search for videos only
 videos = search_youtube("python programming", filter_type="video", max_results=10)
@@ -246,7 +246,7 @@ for video in videos:
 ### Saving Results to a JSON File
 
 ```python
-from lightytsearch import search_youtube
+from LightYtSearch import search_youtube
 
 # Search and save to custom file
 search_youtube("machine learning", max_results=15, save_json=True, output_file="ml_videos.json")
@@ -255,7 +255,7 @@ search_youtube("machine learning", max_results=15, save_json=True, output_file="
 ### Using Different Region and Language
 
 ```python
-from lightytsearch import search_youtube
+from LightYtSearch import search_youtube
 
 # Search in Italian from Italy
 results_it = search_youtube("ricette pasta", language="it", region="IT", max_results=5)
