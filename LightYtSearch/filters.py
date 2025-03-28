@@ -194,19 +194,36 @@ def extract_video_info(video_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
                 if 'watchEndpoint' in nav:
                     video_id = nav['watchEndpoint'].get('videoId', 'N/A')
         
-        # Extract title
+        # Improved title extraction with multiple fallbacks
         title = 'N/A'
         if 'title' in video_data:
-            if 'runs' in video_data['title']:
-                title = ' '.join([run['text'] for run in video_data['title']['runs']])
+            # Method 1: Extract from runs array
+            if 'runs' in video_data['title'] and video_data['title']['runs']:
+                runs_text = [run.get('text', '') for run in video_data['title']['runs']]
+                title = ''.join(runs_text)
+            
+            # Method 2: Extract from simpleText
             elif 'simpleText' in video_data['title']:
                 title = video_data['title']['simpleText']
-            elif 'accessibility' in video_data['title']:
-                # Some titles are in accessibility structure
-                accessibility = video_data['title']['accessibility']
-                if 'accessibilityData' in accessibility:
-                    title = accessibility['accessibilityData'].get('label', 'N/A')
             
+            # Method 3: Extract from accessibility label
+            elif 'accessibility' in video_data['title'] and 'accessibilityData' in video_data['title']['accessibility']:
+                access_label = video_data['title']['accessibility']['accessibilityData'].get('label', '')
+                if access_label:
+                    # Sometimes the accessibility label includes " by [channel name]" and other info
+                    if ' by ' in access_label:
+                        title = access_label.split(' by ')[0]
+                    else:
+                        title = access_label
+        
+        # Additional fallback for title in headline field (some mobile responses)
+        if title == 'N/A' and 'headline' in video_data:
+            if 'runs' in video_data['headline'] and video_data['headline']['runs']:
+                runs_text = [run.get('text', '') for run in video_data['headline']['runs']]
+                title = ''.join(runs_text)
+            elif 'simpleText' in video_data['headline']:
+                title = video_data['headline']['simpleText']
+        
         # Extract channel information
         channel_name = 'N/A'
         channel_id = 'N/A'

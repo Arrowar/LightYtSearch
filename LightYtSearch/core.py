@@ -20,7 +20,8 @@ def search_youtube(query: str, max_results: int = 5, filter_type: Optional[str] 
                   save_json: bool = False, output_file: Optional[str] = None, 
                   verbose: bool = False, showResults: bool = True, 
                   retry_count: int = 3, retry_delay: int = 2,
-                  debug: bool = False, showTimeExecution: bool = False) -> List[Dict[str, Any]]: 
+                  debug: bool = False, showTimeExecution: bool = False,
+                  save_raw_data: bool = False, raw_data_dir: Optional[str] = None) -> List[Dict[str, Any]]: 
     """
     Search YouTube and extract detailed information from search results
     
@@ -41,6 +42,8 @@ def search_youtube(query: str, max_results: int = 5, filter_type: Optional[str] 
         retry_delay (int): Delay between retries in seconds (with randomization)
         debug (bool): Enable additional debug output
         showTimeExecution (bool): Display execution time for each major process
+        save_raw_data (bool): Whether to save raw YouTube data as JSON (default: True)
+        raw_data_dir (str, optional): Directory to save raw data files (default: 'raw_data' in current dir)
     
     Returns:
         list: List of dictionaries containing video/movie information
@@ -136,6 +139,32 @@ def search_youtube(query: str, max_results: int = 5, filter_type: Optional[str] 
     # Get ytInitialData
     extractor = YTInitialDataExtractor(response.text)
     initial_data = extractor.extract()
+
+    # Save initial_data to json
+    if save_raw_data:
+        try:
+            # Create a raw_data directory if it doesn't exist
+            if raw_data_dir is None:
+                raw_data_dir = os.path.join(os.getcwd(), 'raw_data')
+            
+            os.makedirs(raw_data_dir, exist_ok=True)
+            
+            # Create filename based on query and timestamp
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            safe_query = "".join(c if c.isalnum() else "_" for c in query)[:30]
+            json_filename = f"yt_data_{safe_query}_{timestamp}.json"
+            json_path = os.path.join(raw_data_dir, json_filename)
+            
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(initial_data, f, indent=2, ensure_ascii=False)
+                
+            if verbose:
+                print(f"{colors.fg.cyan}Raw YouTube data saved to: {colors.fg.green}{json_path}{colors.reset}")
+
+        except Exception as e:
+            if verbose:
+                print(f"{colors.fg.error}Error saving initial data to JSON: {str(e)}{colors.reset}")
+
     extraction_method = extractor.last_extraction_method
     
     extraction_execution_time = time.time() - extraction_start_time

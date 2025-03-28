@@ -7,7 +7,7 @@ from LightYtSearch import search_youtube
 
 def main():
     query = input("Enter a YouTube search query: ")
-    results = search_youtube(query, max_results=5, showTimeExecution=True)
+    results = search_youtube(query, max_results=2, showResults=True, verbose=True)
 
     print(f"\nFound {len(results)} results for '{query}'")
 

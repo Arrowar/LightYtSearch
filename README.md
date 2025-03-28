@@ -4,7 +4,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/LightYtSearch.svg)](https://pypi.org/project/LightYtSearch/)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python Versions](https://img.shields.io/pypi/pyversions/LightYtSearch.svg)](https://pypi.org/project/LightYtSearch/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/LightYtSearch.svg)](https://pypi.org/project/lightytsearch/)
 [![Downloads](https://static.pepy.tech/badge/lightytsearch)](https://pepy.tech/project/lightytsearch)
 [![Commits](https://img.shields.io/github/commit-activity/m/Arrowar/LightYtSearch)](https://github.com/Arrowar/LightYtSearch/commits/main)
 [![Last Commit](https://img.shields.io/github/last-commit/Arrowar/LightYtSearch)](https://github.com/Arrowar/LightYtSearch/commits/main)
@@ -40,6 +40,9 @@
 - 📄 JSON output support
 - 🌐 Configurable search parameters (language, region, etc.)
 - 🛡️ Fault-tolerant with retry capabilities
+- 🗂️ Save raw YouTube data for further analysis
+- 🖼️ Proxy support
+- 🔄 User-agent rotation
 
 ## 🚀 Installation
 
@@ -107,6 +110,8 @@ The `search_youtube()` function accepts the following parameters:
 | `retry_count` | int | Number of retries if request fails | 3 |
 | `retry_delay` | int | Delay between retries in seconds | 2 |
 | `showTimeExecution` | bool | Display execution time for each major process | False |
+| `save_raw_data` | bool | Save raw YouTube data to JSON file | False |
+| `raw_data_dir` | str | Directory to save raw YouTube data | './raw_data' |
 
 > **Note:** The maximum possible value for `max_results` is 20 due to YouTube's page limitations.
 
@@ -124,6 +129,9 @@ LightYtSearch "python tutorial" -j > results.json
 
 # Save to a file
 LightYtSearch "python tutorial" -s -o my_results.json
+
+# Save raw YouTube data
+LightYtSearch "python tutorial" --save-raw-data --raw-data-dir ./my_raw_data
 
 # Filter by type
 LightYtSearch "python tutorial" --filter video
@@ -156,6 +164,9 @@ LightYtSearch "python tutorial" --time
 | `--retry-count` | | Number of retries | 3 |
 | `--retry-delay` | | Delay between retries in seconds | 2 |
 | `--time` | | Show execution time | |
+| `--save-raw-data` | | Save raw YouTube data to JSON file | False |
+| `--no-save-raw-data` | | Do not save raw YouTube data | |
+| `--raw-data-dir` | | Directory to save raw YouTube data | ./raw_data |
 
 ## 🔄 Data Structure
 
@@ -274,6 +285,15 @@ results_it = search_youtube("ricette pasta", language="it", region="IT", max_res
 
 # Search in Spanish from Mexico
 results_es = search_youtube("recetas mexicanas", language="es", region="MX", max_results=5)
+```
+
+### 🗂️ Saving Raw YouTube Data
+
+```python
+from LightYtSearch import search_youtube
+
+# Save raw YouTube data to a custom directory
+search_youtube("data science", save_raw_data=True, raw_data_dir="./data_science_raw")
 ```
 
 ## ⚠️ Limitations
