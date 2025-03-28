@@ -24,22 +24,21 @@ class YTInitialDataExtractor:
         """
         self.html_content = html_content
         self.debug_mode = debug_mode
+        self.last_extraction_method = "Unknown"
     
     def _validate_ytdata(self, data):
         if not isinstance(data, dict):
             return False
         
         # First level validation
-        expected_keys = ['responseContext', 'contents']
+        expected_keys = ['responseContext', 'contents', 'header', 'metadata', 'trackingParams']
         found_keys = [key for key in expected_keys if key in data]
         
-        if len(found_keys) < 1:
-            if self.debug_mode:
-                print(f"{colors.fg.error}Data validation failed: missing required keys. Found: {colors.fg.yellow}{list(data.keys())}{colors.reset}")
-            return False
-        
-        # Second level validation - check structure of contents
-        content_types = []
+        # If we have at least 2 of these keys, it's likely a valid response
+        if len(found_keys) >= 2:
+            return True
+            
+        # Additional check for nested contents structure
         if 'contents' in data:
             contents = data['contents']
             
@@ -50,7 +49,8 @@ class YTInitialDataExtractor:
                     'twoColumnSearchResultsRenderer',
                     'twoColumnBrowseResultsRenderer',
                     'twoColumnWatchNextResults',
-                    'sectionListRenderer'
+                    'sectionListRenderer',
+                    'richGridRenderer'
                 ]
                 if any(t in content_types for t in valid_types):
                     return True
@@ -60,137 +60,145 @@ class YTInitialDataExtractor:
                 return True
         
         if self.debug_mode and 'contents' in data:
-            print(f"{colors.fg.error}Content validation failed. Found content types: {colors.fg.yellow}{content_types}{colors.reset}")
+            print(f"{colors.fg.error}Content validation failed. Found keys: {colors.fg.yellow}{list(data.keys())}{colors.reset}")
         
-        # Fallback validation - just check for responseContext which is always present
-        return 'responseContext' in data
+        # Fallback check for result items
+        return 'items' in data or 'estimatedResults' in data
 
     def _extract_with_regex(self, html_content):
         patterns = [
-            r'var\s+ytInitialData\s*=\s*({.+?});',
-            r'window\["ytInitialData"\]\s*=\\s*({.+?});',
-            r'ytInitialData\s*=\s*({.+?});'
+            # Standard format
+            r'var\s+ytInitialData\s*=\s*({.+?})(?:;|<\/script>)',
+            # Window assignment format
+            r'window\["ytInitialData"\]\s*=\s*({.+?})(?:;|<\/script>)',
+            # Simple assignment format
+            r'ytInitialData\s*=\s*({.+?})(?:;|<\/script>)',
+            # JSON inside script with JSON type
+            r'<script[^>]+>\s*ytInitialData\s*=\s*({.+?})(?:;|<\/script>)',
+            # More relaxed pattern
+            r'\bytInitialData\b\s*=\s*({.+?})(?=;\s*(?:var|const|let|<\/script>))'
         ]
         
-        for pattern in patterns:
-            match = re.search(pattern, html_content, re.DOTALL)
-            if match:
+        for i, pattern in enumerate(patterns):
+            matches = re.finditer(pattern, html_content, re.DOTALL)
+            
+            for match in matches:
                 try:
-                    data = json.loads(match.group(1))
-
-                    if self._validate_ytdata(data):
+                    # Get the matched JSON string
+                    json_str = match.group(1).strip()
+                    
+                    # Check for unclosed JSON and try to fix common issues
+                    if json_str.count('{') != json_str.count('}'):
                         if self.debug_mode:
-                            print(f"{colors.fg.success}Extraction successful using regex method{colors.reset}")
-
-                            # Debug info about data structure
-                            if 'contents' in data:
-                                if isinstance(data['contents'], dict):
-                                    print(f"{colors.fg.info}Content keys: {colors.fg.yellow}{list(data['contents'].keys())}{colors.reset}")
-                                elif isinstance(data['contents'], list):
-                                    print(f"{colors.fg.info}Content is a list with {colors.fg.yellow}{len(data['contents'])}{colors.fg.info} items{colors.reset}")
-
+                            print(f"{colors.fg.warning}Unbalanced braces in JSON, attempting to repair{colors.reset}")
+                        continue
+                        
+                    data = json.loads(json_str)
+                    if self._validate_ytdata(data):
+                        self.last_extraction_method = f"Regex Pattern {i+1}"
                         return data
                     
-                except json.JSONDecodeError as e:
-                    if self.debug_mode:
-                        print(f"{colors.fg.error}JSON decode error: {str(e)}{colors.reset}")
-                    pass
+                except json.JSONDecodeError:
+                    # Continue to next match if JSON is invalid
+                    continue
 
+        return None
+
+    def _extract_from_script_tag(self, html_content):
+        """Extract ytInitialData directly from script tags"""
+        soup = BeautifulSoup(html_content, "html.parser")
+        
+        # First look for the dedicated script with just ytInitialData
+        scripts = soup.find_all("script")
+        
+        for script in scripts:
+            script_content = script.string
+            if not script_content:
+                continue
+                
+            if "ytInitialData" in script_content:
+                # Try multiple extraction approaches
+                extraction_methods = [
+                    # Method 1: Standard assignment
+                    (r'var\s+ytInitialData\s*=\s*({.+?});', 'Standard Assignment'),
+                    # Method 2: Window assignment
+                    (r'window\["ytInitialData"\]\s*=\s*({.+?});', 'Window Assignment'),
+                    # Method 3: Simple assignment
+                    (r'ytInitialData\s*=\s*({.+?});', 'Simple Assignment'),
+                    # Method 4: JSON string assignment
+                    (r'ytInitialData\s*=\s*\'(.+?)\';', 'String Assignment')
+                ]
+                
+                for pattern, method_name in extraction_methods:
+                    match = re.search(pattern, script_content, re.DOTALL)
+                    if match:
+                        try:
+                            if "'" in pattern:  # String format needs unescaping
+                                json_str = bytes(match.group(1), 'utf-8').decode('unicode_escape')
+                            else:
+                                json_str = match.group(1)
+                                
+                            data = json.loads(json_str)
+                            if self._validate_ytdata(data):
+                                self.last_extraction_method = f"Script Tag ({method_name})"
+                                return data
+                        except:
+                            continue
+        
         return None
 
     def _extract_balanced_json(self, text):
-        brace_count = 0
+        """Extract a balanced JSON object from text, handling nested structures properly"""
+        if not text:
+            return None
+            
+        # Find the start of ytInitialData
+        start_idx = text.find("ytInitialData")
+        if start_idx == -1:
+            return None
+            
+        # Find an opening brace after ytInitialData
+        brace_idx = text.find("{", start_idx)
+        if brace_idx == -1:
+            return None
+            
+        # Track brace nesting level
+        level = 0
         in_string = False
         escape_next = False
-        json_str = ""
+        end_idx = -1
         
-        for char in text:
-            if char == '\\' and not escape_next:
-                escape_next = True
-                json_str += char
-                continue
-                
+        for i in range(brace_idx, len(text)):
+            char = text[i]
+            
+            # Handle string literals
             if char == '"' and not escape_next:
                 in_string = not in_string
+            elif char == '\\' and not escape_next:
+                escape_next = True
+                continue
                 
-            escape_next = False
-            
             if not in_string:
                 if char == '{':
-                    if brace_count == 0 and not json_str:
-                        json_str += char
-                    brace_count += 1
+                    level += 1
                 elif char == '}':
-                    brace_count -= 1
-                    if brace_count == 0 and json_str:
-                        json_str += char
+                    level -= 1
+                    if level == 0:
+                        end_idx = i + 1
                         break
+                        
+            escape_next = False
             
-            if json_str:
-                json_str += char
+        if end_idx != -1:
+            json_str = text[brace_idx:end_idx]
+            try:
+                data = json.loads(json_str)
+                if self._validate_ytdata(data):
+                    return data
+            except:
+                pass
                 
-        return json_str if json_str.startswith('{') and json_str.endswith('}') else None
-
-    def _extract_with_bs4(self, html_content):
-        soup = BeautifulSoup(html_content, "html.parser")
-        for script in soup.find_all("script"):
-            if script.string and "ytInitialData" in script.string:
-
-                # Method 1: Direct JSON extraction
-                try:
-                    start_markers = [
-                        "var ytInitialData = ", 
-                        "ytInitialData = ", 
-                        "window[\"ytInitialData\"] = "
-                    ]
-
-                    for marker in start_markers:
-                        pos = script.string.find(marker)
-                        if pos != -1:
-                            json_str = script.string[pos + len(marker):].split(";")[0]
-                            data = json.loads(json_str)
-                            if self._validate_ytdata(data):
-                                if self.debug_mode:
-                                    print(f"{colors.fg.success}Extraction successful using BeautifulSoup direct method{colors.reset}")
-                                return data        
-                except:
-                    pass
-
-                # Method 2: Balanced JSON extraction
-                try:
-                    start_pos = script.string.find("ytInitialData")
-                    if start_pos != -1:
-                        json_str = self._extract_balanced_json(script.string[start_pos:])
-                        if json_str:
-                            data = json.loads(json_str)
-                            if self._validate_ytdata(data):
-                                if self.debug_mode:
-                                    print(f"{colors.fg.success}Extraction successful using balanced JSON method{colors.reset}")
-                                return data
-                except:
-                    pass
-
-                # Method 3: Escaped JSON extraction
-                try:
-                    if "ytInitialData = '" in script.string:
-                        data_str = script.string.split("ytInitialData = '")[1].split("';")[0]
-                        data_str = bytes(data_str, 'utf-8').decode('unicode_escape')
-                        data = json.loads(data_str)
-                        if self._validate_ytdata(data):
-                            if self.debug_mode:
-                                print(f"{colors.fg.success}Extraction successful using escaped JSON method{colors.reset}")
-                            return data
-                except:
-                    continue
         return None
-
-    def _save_json(self, data, output_path='output.json'):
-        try:
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            print(f"{colors.fg.success}Data saved to {colors.fg.info}{output_path}{colors.reset}")
-        except Exception as e:
-            print(f"{colors.fg.error}Error saving JSON: {str(e)}{colors.reset}")
 
     def extract(self, save_raw=False, output_path='output.json'):
         """
@@ -203,63 +211,43 @@ class YTInitialDataExtractor:
         Returns:
             dict: The extracted YouTube data or None if extraction failed
         """
-        # Try different extraction methods
+        # Reset extraction method
+        self.last_extraction_method = "Failed"
+        
+        # Try regex extraction first (fastest method)
         data = self._extract_with_regex(self.html_content)
         if data:
             if save_raw:
                 self._save_json(data, output_path)
-            
-            if self.debug_mode and 'contents' in data:
-                self._analyze_contents_structure(data['contents'])
-                
             return data
-            
-        data = self._extract_with_bs4(self.html_content)
+        
+        # Try direct script tag extraction
+        data = self._extract_from_script_tag(self.html_content)
         if data:
             if save_raw:
                 self._save_json(data, output_path)
-            
-            if self.debug_mode and 'contents' in data:
-                self._analyze_contents_structure(data['contents'])
-                
             return data
+        
+        # Try balanced JSON extraction as a last resort
+        start_idx = self.html_content.find("ytInitialData")
+        if start_idx != -1:
+            text_after = self.html_content[start_idx:]
+            data = self._extract_balanced_json(text_after)
+            if data:
+                self.last_extraction_method = "Balanced JSON Parser"
+                if save_raw:
+                    self._save_json(data, output_path)
+                return data
+        
+        if self.debug_mode:
+            print(f"{colors.fg.error}All extraction methods failed{colors.reset}")
             
         return None
-        
-    def _analyze_contents_structure(self, contents):
-        """Analyze and print the structure of YouTube contents for debugging"""
-        if isinstance(contents, dict):
-            print(f"{colors.fg.info}Contents is a dictionary with keys: {colors.fg.yellow}{list(contents.keys())}{colors.reset}")
-            
-            # Check for section list renderer
-            if 'sectionListRenderer' in contents:
-                sections = contents['sectionListRenderer'].get('contents', [])
-                print(f"{colors.fg.info}Found {colors.fg.cyan}{len(sections)}{colors.fg.info} sections in sectionListRenderer{colors.reset}")
-                
-                # Analyze first few sections
-                for i, section in enumerate(sections[:3]):
-                    section_type = next(iter(section.keys()), "unknown")
-                    print(f"{colors.fg.info}  Section {i+1} type: {colors.fg.teal}{section_type}{colors.reset}")
-                    
-                    if section_type == 'itemSectionRenderer':
-                        items = section['itemSectionRenderer'].get('contents', [])
-                        print(f"{colors.fg.info}    Contains {colors.fg.cyan}{len(items)}{colors.fg.info} items{colors.reset}")
-                        
-                        # Show first few item types
-                        item_types = [next(iter(item.keys()), "unknown") for item in items[:5]]
-                        print(f"{colors.fg.info}    First few item types: {colors.fg.yellow}{item_types}{colors.reset}")
-            
-            # Check for two column search results
-            elif 'twoColumnSearchResultsRenderer' in contents:
-                primary = contents['twoColumnSearchResultsRenderer'].get('primaryContents', {})
-                if 'sectionListRenderer' in primary:
-                    sections = primary['sectionListRenderer'].get('contents', [])
-                    print(f"{colors.fg.info}Found {colors.fg.cyan}{len(sections)}{colors.fg.info} sections in twoColumnSearchResultsRenderer{colors.reset}")
-        
-        elif isinstance(contents, list):
-            print(f"{colors.fg.info}Contents is a list with {colors.fg.cyan}{len(contents)}{colors.fg.info} items{colors.reset}")
-            
-            # Show types of first few items
-            for i, item in enumerate(contents[:3]):
-                item_type = next(iter(item.keys()), "unknown") if isinstance(item, dict) else type(item).__name__
-                print(f"{colors.fg.info}  Item {i+1} type: {colors.fg.teal}{item_type}{colors.reset}")
+    
+    def _save_json(self, data, output_path='output.json'):
+        try:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f"{colors.fg.success}Data saved to {colors.fg.info}{output_path}{colors.reset}")
+        except Exception as e:
+            print(f"{colors.fg.error}Error saving JSON: {str(e)}{colors.reset}")

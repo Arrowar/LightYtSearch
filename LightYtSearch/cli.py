@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--region", default="US", help="Region code (default: US)")
     parser.add_argument("--retry-count", type=int, default=3, help="Number of retries for failed requests (default: 3)")
     parser.add_argument("--retry-delay", type=int, default=2, help="Delay between retries in seconds (default: 2)")
+    parser.add_argument("--time", action="store_true", help="Show execution time for each process")
     
     args = parser.parse_args()
     
@@ -44,7 +45,8 @@ def main():
         verbose=not args.quiet,
         showResults=not args.json and not args.quiet,
         retry_count=args.retry_count,
-        retry_delay=args.retry_delay
+        retry_delay=args.retry_delay,
+        showTimeExecution=args.time
     )
     
     if args.json:

@@ -20,7 +20,7 @@ def search_youtube(query: str, max_results: int = 5, filter_type: Optional[str] 
                   save_json: bool = False, output_file: Optional[str] = None, 
                   verbose: bool = False, showResults: bool = True, 
                   retry_count: int = 3, retry_delay: int = 2,
-                  debug: bool = False) -> List[Dict[str, Any]]: 
+                  debug: bool = False, showTimeExecution: bool = False) -> List[Dict[str, Any]]: 
     """
     Search YouTube and extract detailed information from search results
     
@@ -40,10 +40,14 @@ def search_youtube(query: str, max_results: int = 5, filter_type: Optional[str] 
         retry_count (int): Number of retries if request fails with 302 or other errors
         retry_delay (int): Delay between retries in seconds (with randomization)
         debug (bool): Enable additional debug output
+        showTimeExecution (bool): Display execution time for each major process
     
     Returns:
         list: List of dictionaries containing video/movie information
     """
+    # Start overall execution timer
+    overall_start_time = time.time()
+    
     if verbose:
         print(f"{colors.fg.purple}Searching YouTube for:{colors.reset} '{colors.bold}{query}{colors.reset}'")
         print(f"{colors.fg.purple}Retrieving up to {colors.fg.cyan}{max_results if max_results > 0 else 'all'}{colors.reset} results...")
@@ -72,6 +76,9 @@ def search_youtube(query: str, max_results: int = 5, filter_type: Optional[str] 
         'user-agent': user_agent,
     }
 
+    # Start HTTP request timer
+    http_start_time = time.time()
+    
     # Implement retries with exponential backoff
     response = None
     attempts = 0
@@ -114,14 +121,26 @@ def search_youtube(query: str, max_results: int = 5, filter_type: Optional[str] 
                 print(f"{colors.fg.amber}Waiting {colors.fg.yellow}{delay:.2f}s{colors.fg.amber} before retry {colors.fg.yellow}{attempts+1}/{retry_count}{colors.reset}")
             time.sleep(delay)
     
+    http_execution_time = time.time() - http_start_time
+    if showTimeExecution:
+        print(f"\t{colors.fg.lightblue}HTTP Request: {colors.fg.yellow}{http_execution_time:.2f}s{colors.reset}")
+    
     if not response or response.status_code != 200:
         if verbose:
             print(f"{colors.fg.error}Error retrieving the page. Status code: {colors.fg.red}{response.status_code if response else 'No response'}{colors.reset}")
         return []
     
+    # Start data extraction timer
+    extraction_start_time = time.time()
+    
     # Get ytInitialData
     extractor = YTInitialDataExtractor(response.text)
     initial_data = extractor.extract()
+    extraction_method = extractor.last_extraction_method
+    
+    extraction_execution_time = time.time() - extraction_start_time
+    if showTimeExecution:
+        print(f"\t{colors.fg.lightblue}Data Extraction: {colors.fg.yellow}{extraction_execution_time:.2f}s {colors.fg.lightgrey}(Method: {extraction_method}){colors.reset}")
     
     if not initial_data:
         if verbose:
@@ -140,11 +159,20 @@ def search_youtube(query: str, max_results: int = 5, filter_type: Optional[str] 
             if verbose:
                 print(f"{colors.fg.error}Error saving debug data: {str(e)}{colors.reset}")
     
+    # Start processing timer
+    processing_start_time = time.time()
+    
     # Process the search results
     search_results = extract_search_results(initial_data, query, max_results, filter_type, verbose, showResults)
     
+    processing_execution_time = time.time() - processing_start_time
+    if showTimeExecution:
+        print(f"\t{colors.fg.lightblue}Results Processing: {colors.fg.yellow}{processing_execution_time:.2f}s{colors.reset}")
+    
     # Save results to JSON file if requested
     if save_json and search_results:
+        saving_start_time = time.time()
+        
         if output_file is None:
             output_file = os.path.join(os.getcwd(), 'output.json')
         
@@ -152,11 +180,20 @@ def search_youtube(query: str, max_results: int = 5, filter_type: Optional[str] 
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(search_results, f, indent=2, ensure_ascii=False)
             
+            saving_execution_time = time.time() - saving_start_time
+            if showTimeExecution:
+                print(f"\t{colors.fg.lightblue}Saving Results: {colors.fg.yellow}{saving_execution_time:.2f}s{colors.reset}")
+                
             if verbose:
                 print(f"{colors.fg.success}Results saved to {colors.fg.info}{output_file}{colors.reset}")
                 
         except Exception as e:
             if verbose:
                 print(f"{colors.fg.error}Error saving results to file: {str(e)}{colors.reset}")
+    
+    # Show total execution time
+    overall_execution_time = time.time() - overall_start_time
+    if showTimeExecution:
+        print(f"\t{colors.fg.lightblue}{colors.bold}Total Execution: {colors.fg.yellow}{overall_execution_time:.2f}s{colors.reset}")
     
     return search_results
