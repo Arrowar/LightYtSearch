@@ -15,23 +15,23 @@
 
 ## 📋 Table of Contents
 
-- [✨ Features](#-features)
-- [🚀 Installation](#-installation)
-- [🏁 Quick Start](#-quick-start)
-- [📖 Usage](#-usage)
-  - [🐍 As a Python Module](#-as-a-python-module)
-  - [⚙️ Function Parameters](#️-function-parameters)
-  - [💻 Command-line Interface](#-command-line-interface)
-  - [🧰 CLI Arguments](#-cli-arguments)
-- [🔄 Data Structure](#-data-structure)
-  - [🎬 Video Results](#-video-results)
-  - [📑 Playlist Results](#-playlist-results)
-  - [🎥 Movie Results](#-movie-results)
-- [📝 Examples](#-examples)
-- [⚠️ Limitations](#️-limitations)
-- [👏 Acknowledgments](#-acknowledgments)
+- [✨ Features](#features)
+- [🚀 Installation](#installation)
+- [🏁 Quick Start](#quick-start)
+- [📖 Usage](#usage)
+  - [🐍 As a Python Module](#as-a-python-module)
+  - [⚙️ Function Parameters](#️function-parameters)
+  - [💻 Command-line Interface](#command-line-interface)
+  - [🧰 CLI Arguments](#cli-arguments)
+- [🔄 Data Structure](#data-structure)
+  - [🎬 Video Results](#video-results)
+  - [📑 Playlist Results](#playlist-results)
+  - [🎥 Movie Results](#movie-results)
+- [📝 Examples](#examples)
+- [⚠️ Limitations](#️limitations)
+- [👏 Acknowledgments](#acknowledgments)
 
-## ✨ Features
+## Features
 
 - 🔍 Search for videos, playlists, and movies on YouTube
 - 📊 Extract detailed information including titles, channels, view counts, and more
@@ -44,7 +44,7 @@
 - 🖼️ Proxy support
 - 🔄 User-agent rotation
 
-## 🚀 Installation
+## Installation
 
 Install from PyPI using pip:
 
@@ -58,7 +58,7 @@ Or install the development version from GitHub:
 pip install git+https://github.com/Arrowar/LightYtSearch.git
 ```
 
-## 🏁 Quick Start
+## Quick Start
 
 ```python
 from LightYtSearch import search_youtube
@@ -74,7 +74,7 @@ for item in results:
     print("---")
 ```
 
-## 📖 Usage
+## Usage
 
 ### 🐍 As a Python Module
 
@@ -91,7 +91,7 @@ for item in results:
     print("---")
 ```
 
-### ⚙️ Function Parameters
+###  Function Parameters
 
 The `search_youtube()` function accepts the following parameters:
 
@@ -115,7 +115,7 @@ The `search_youtube()` function accepts the following parameters:
 
 > **Note:** The maximum possible value for `max_results` is 20 due to YouTube's page limitations.
 
-### 💻 Command-line Interface
+###  Command-line Interface
 
 ```bash
 # Basic search
@@ -146,7 +146,7 @@ LightYtSearch "python tutorial" --retry-count 5 --retry-delay 3
 LightYtSearch "python tutorial" --time
 ```
 
-### 🧰 CLI Arguments
+###  CLI Arguments
 
 | Argument | Short | Description | Default |
 |----------|-------|-------------|---------|
@@ -168,11 +168,11 @@ LightYtSearch "python tutorial" --time
 | `--no-save-raw-data` | | Do not save raw YouTube data | |
 | `--raw-data-dir` | | Directory to save raw YouTube data | ./raw_data |
 
-## 🔄 Data Structure
+##  Data Structure
 
 The function returns a list of dictionaries with different structures depending on the item type:
 
-### 🎬 Video Results
+###  Video Results
 ```python
 {
     'type': 'video',
@@ -205,7 +205,7 @@ The function returns a list of dictionaries with different structures depending 
 }
 ```
 
-### 📑 Playlist Results
+###  Playlist Results
 ```python
 {
     'type': 'playlist',
@@ -229,7 +229,7 @@ The function returns a list of dictionaries with different structures depending 
 }
 ```
 
-### 🎥 Movie Results
+###  Movie Results
 ```python
 {
     'type': 'movie',
@@ -248,9 +248,9 @@ The function returns a list of dictionaries with different structures depending 
 }
 ```
 
-## 📝 Examples
+##  Examples
 
-### 🔍 Searching for Videos Only
+###  Searching for Videos Only
 
 ```python
 from LightYtSearch import search_youtube
@@ -266,7 +266,7 @@ for video in videos:
     print("---")
 ```
 
-### 💾 Saving Results to a JSON File
+###  Saving Results to a JSON File
 
 ```python
 from LightYtSearch import search_youtube
@@ -275,7 +275,7 @@ from LightYtSearch import search_youtube
 search_youtube("machine learning", max_results=15, save_json=True, output_file="ml_videos.json")
 ```
 
-### 🌐 Using Different Region and Language
+###  Using Different Region and Language
 
 ```python
 from LightYtSearch import search_youtube
@@ -287,7 +287,7 @@ results_it = search_youtube("ricette pasta", language="it", region="IT", max_res
 results_es = search_youtube("recetas mexicanas", language="es", region="MX", max_results=5)
 ```
 
-### 🗂️ Saving Raw YouTube Data
+###  Saving Raw YouTube Data
 
 ```python
 from LightYtSearch import search_youtube
@@ -296,7 +296,7 @@ from LightYtSearch import search_youtube
 search_youtube("data science", save_raw_data=True, raw_data_dir="./data_science_raw")
 ```
 
-## ⚠️ Limitations
+##  Limitations
 
 - **Maximum Results**: This library can extract a maximum of 20 results per search query due to YouTube's initial page load limitations.
 - **No Pagination**: Currently doesn't support fetching more than the initial results page.
@@ -304,7 +304,7 @@ search_youtube("data science", save_raw_data=True, raw_data_dir="./data_science_
 - **Rate Limiting**: Excessive use might trigger YouTube's rate limiting mechanisms.
 - **No Official Support**: This is not using the official YouTube API and is therefore not officially supported by YouTube.
 
-## 👏 Acknowledgments
+##  Acknowledgments
 
 - Inspired by the need for a lightweight YouTube search solution without API key requirements
 - Thanks to all contributors who have helped shape this project
